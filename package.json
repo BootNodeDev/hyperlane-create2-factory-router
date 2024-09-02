@@ -1,0 +1,41 @@
+{
+  "name": "@BootNodeDev/hyperlane-create2-factory-router",
+  "description": "",
+  "version": "0.0.1",
+  "author": {
+    "name": "BootNodeDev",
+    "url": "https://github.com/BootNodeDev"
+  },
+  "dependencies": {
+    "@hyperlane-xyz/core": "^5.1.0",
+    "@openzeppelin/contracts": "^4.9.3",
+    "@openzeppelin/contracts-upgradeable": "^v4.9.3"
+  },
+  "devDependencies": {
+    "forge-std": "github:foundry-rs/forge-std#v1.8.1",
+    "prettier": "^3.0.0",
+    "solhint": "^3.6.2"
+  },
+  "keywords": [
+    "blockchain",
+    "ethereum",
+    "forge",
+    "foundry",
+    "smart-contracts",
+    "solidity",
+    "template"
+  ],
+  "private": true,
+  "scripts": {
+    "clean": "rm -rf cache out",
+    "build": "forge build",
+    "lint": "yarn run lint:sol && yarn run prettier:check",
+    "lint:sol": "forge fmt --check && yarn solhint '{script,src,test}/**/*.sol'",
+    "sol:fmt": "forge fmt",
+    "prettier:check": "prettier --check \"**/*.{json,md,yml}\" --ignore-path \".prettierignore\"",
+    "prettier:write": "prettier --write \"**/*.{json,md,yml}\" --ignore-path \".prettierignore\"",
+    "test": "forge test -vvv",
+    "test:coverage": "forge coverage",
+    "test:coverage:report": "forge coverage --report lcov && genhtml lcov.info --branch-coverage --output-dir coverage"
+  }
+}
