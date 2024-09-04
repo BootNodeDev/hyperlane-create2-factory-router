@@ -6,12 +6,8 @@ import { InterchainCreate2FactoryMessage } from "./libs/InterchainCreate2Factory
 
 // ============ External Imports ============
 import { TypeCasts } from "@hyperlane-xyz/libs/TypeCasts.sol";
-import { StandardHookMetadata } from "@hyperlane-xyz/hooks/libs/StandardHookMetadata.sol";
-import { EnumerableMapExtended } from "@hyperlane-xyz/libs/EnumerableMapExtended.sol";
 import { Router } from "@hyperlane-xyz/client/Router.sol";
 import { Create2 } from "@openzeppelin/contracts/utils/Create2.sol";
-import { Address } from "@openzeppelin/contracts/utils/Address.sol";
-import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 /*
  * @title A contract that allows accounts on chain A to deploy contracts on chain B.
@@ -134,21 +130,14 @@ contract InterchainCreate2FactoryRouter is Router {
         view
         returns (uint256 _gasPayment)
     {
-
-        return _Router_quoteDispatch(
-            _destination,_messageBody, _hookMetadata, address(hook)
-        );
+        return _Router_quoteDispatch(_destination, _messageBody, _hookMetadata, address(hook));
     }
 
     /**
      * @dev Returns the address where a contract will be stored if deployed via {deploy} or {deployAndInit} by `sender`.
      * Any change in the `bytecode`, `sender`, or `salt` will result in a new destination address.
      */
-    function deployedAddress(
-        address _sender,
-        bytes32 _salt,
-        bytes memory _bytecode
-    ) external view returns (address) {
+    function deployedAddress(address _sender, bytes32 _salt, bytes memory _bytecode) external view returns (address) {
         return address(
             uint160(
                 uint256(
@@ -168,7 +157,7 @@ contract InterchainCreate2FactoryRouter is Router {
     // ============ Internal Functions ============
 
     function _handle(uint32, bytes32, bytes calldata _message) internal override {
-        (bytes32 _sender, , bytes32 _salt, bytes memory _bytecode, bytes memory _initCode) =
+        (bytes32 _sender,, bytes32 _salt, bytes memory _bytecode, bytes memory _initCode) =
             InterchainCreate2FactoryMessage.decode(_message);
 
         address deployedAddress_ = _deploy(_bytecode, _getSalt(_sender, _salt));
@@ -192,20 +181,13 @@ contract InterchainCreate2FactoryRouter is Router {
         bytes32 _ism,
         bytes memory _messageBody,
         bytes memory _hookMetadata
-
     )
         private
         returns (bytes32)
     {
         emit RemoteDeployDispatched(_destination, msg.sender, _destination, _ism);
 
-        return _Router_dispatch(
-                _destination,
-                msg.value,
-                _messageBody,
-                _hookMetadata,
-                address(hook)
-            );
+        return _Router_dispatch(_destination, msg.value, _messageBody, _hookMetadata, address(hook));
     }
 
     /**
