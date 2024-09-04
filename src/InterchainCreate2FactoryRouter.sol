@@ -181,10 +181,10 @@ contract InterchainCreate2FactoryRouter is Router {
     }
 
     /**
-     * @notice Dispatches an InterchainAccountMessage to the remote router
+     * @notice Dispatches an InterchainCreate2FactoryMessage to the remote router
      * @param _destination The remote domain
      * @param _ism The address of the remote ISM
-     * @param _messageBody The InterchainAccountMessage body
+     * @param _messageBody The InterchainCreate2FactoryMessage body
      * @param _hookMetadata The hook metadata to override with for the hook set by the owner
      */
     function _dispatchMessage(
@@ -209,7 +209,7 @@ contract InterchainCreate2FactoryRouter is Router {
     }
 
     /**
-     * @notice Returns the salt used to deploy an interchain account
+     * @notice Returns the salt used to deploy the contract
      * @param _sender The remote sender
      * @param _senderSalt The salt used by the sender on the remote chain
      * @return The CREATE2 salt used for deploying the contract
