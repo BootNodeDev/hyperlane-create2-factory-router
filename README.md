@@ -1,16 +1,17 @@
-
 # Hyperlane InterchainCreate2FactoryRouter
 
 This repo contains a possible solution for https://github.com/hyperlane-xyz/hyperlane-monorepo/issues/2232.
 
-The `InterchainCreate2FactoryRouter` would allow to deploy a contract on any given chain Hyperlane and the router are deployed from another chain with the same conditions.
-This allows developers to just have a balance on one chain but deploy contracts on multiple chains.
+The `InterchainCreate2FactoryRouter` would allow to deploy a contract on any given chain Hyperlane and the router are
+deployed from another chain with the same conditions. This allows developers to just have a balance on one chain but
+deploy contracts on multiple chains.
 
 ## How to use
 
 TODO:
-   - Write instruction about how to send deployment messages.
-   - Write an script for sending interchain messages.
+
+- Write instruction about how to send deployment messages.
+- Write an script for sending interchain messages.
 
 ## Installing Dependencies
 
@@ -25,7 +26,6 @@ This is how to install dependencies:
    `dependency-name=node_modules/dependency-name`
 
 Note that OpenZeppelin Contracts is pre-installed, so you can follow that as an example.
-
 
 ## Usage
 
