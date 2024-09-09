@@ -14,11 +14,11 @@ contract InterchainDeployExample is Script {
     function run() public {
         uint256 ownerPrivateKey = vm.envUint("ROUTER_OWNER_PK");
         address localRouter = vm.envAddress("ROUTER");
+        uint32 destination = uint32(vm.envUint("DESTINATION"));
+        bytes32 salt = keccak256(abi.encodePacked(vm.envString("EXAMPLE_SALT")));
 
         bytes memory bytecode = type(TestDeployContract).creationCode;
-        bytes32 salt = "testDeployContract.0.0.2";
         bytes32 ism = TypeCasts.addressToBytes32(address(0));
-        uint32 destination = uint32(11155111);
 
         bytes memory messageBody = InterchainCreate2FactoryMessage.encode(
             vm.addr(ownerPrivateKey),
