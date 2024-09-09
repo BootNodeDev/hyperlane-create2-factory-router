@@ -18,15 +18,14 @@ contract EnrollRouters is Script {
         address localRouter = vm.envAddress("ROUTER");
 
         if (routers.length != domains.length) {
-            revert('Invalid input');
+            revert("Invalid input");
         }
 
         vm.startBroadcast(ownerPrivateKey);
 
-        for (uint i = 0; i < routers.length; i++) {
+        for (uint256 i = 0; i < routers.length; i++) {
             InterchainCreate2FactoryRouter(localRouter).enrollRemoteRouter(
-                uint32(domains[i]),
-                TypeCasts.addressToBytes32(routers[i])
+                uint32(domains[i]), TypeCasts.addressToBytes32(routers[i])
             );
         }
 

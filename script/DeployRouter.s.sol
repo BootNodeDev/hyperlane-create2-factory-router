@@ -12,7 +12,6 @@ import { InterchainCreate2FactoryIsm } from "../src/InterchainCreate2FactoryIsm.
 /// @dev See the Solidity Scripting tutorial: https://book.getfoundry.sh/tutorials/solidity-scripting
 contract DeployRouter is Script {
     function run() public {
-
         uint256 deployerPrivateKey = vm.envUint("DEPLOYER_PK");
 
         string memory ISM_SALT = vm.envString("ISM_SALT");
@@ -28,7 +27,7 @@ contract DeployRouter is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         if (ism == address(0)) {
-            ism = address(new InterchainCreate2FactoryIsm{salt: ismSalt}(mailbox));
+            ism = address(new InterchainCreate2FactoryIsm{ salt: ismSalt }(mailbox));
         }
 
         if (routerImpl == address(0)) {
@@ -38,17 +37,14 @@ contract DeployRouter is Script {
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
             address(routerImpl),
             admin,
-            abi.encodeWithSelector(
-                InterchainCreate2FactoryRouter.initialize.selector, customHook, ism, owner
-            )
+            abi.encodeWithSelector(InterchainCreate2FactoryRouter.initialize.selector, customHook, ism, owner)
         );
 
         vm.stopBroadcast();
 
         // solhint-disable-next-line no-console
-        console2.log('Proxy:', address(proxy));
-        console2.log('Implementation:', routerImpl);
-        console2.log('ISM:', ism);
-
+        console2.log("Proxy:", address(proxy));
+        console2.log("Implementation:", routerImpl);
+        console2.log("ISM:", ism);
     }
 }

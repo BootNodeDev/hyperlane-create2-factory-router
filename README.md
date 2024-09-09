@@ -17,19 +17,24 @@ Set the following environment variables required for running all the scripts, on
 - `NETWORK`: the name of the network you want to run the script
 - `API_KEY_ALCHEMY`: you Alchemy API key
 
-If the network is not listed under the `rpc_endpoints` section of the [foundry.toml file](./foundry.toml) you'll have to add a new entry for it.
+If the network is not listed under the `rpc_endpoints` section of the [foundry.toml file](./foundry.toml) you'll have to
+add a new entry for it.
 
-For deploying the router you have to run the `yarn run:deployRouter`. Make sure the following environment variable are set:
+For deploying the router you have to run the `yarn run:deployRouter`. Make sure the following environment variable are
+set:
+
 - `DEPLOYER_PK`: deployer private key
 - `MAILBOX`: address of Hyperlane Mailbox contract on the chain
 - `ROUTER_OWNER`: address of the router owner
 - `PROXY_ADMIN`: address of the proxy admin. The router is deployed using a `TransparentUpgradeableProxy`
-- `ISM_SALT`: a salt for deploying the ISM the router uses. The provided in this repo is an `RoutingIsm` which allows the user indicate the ISM used when sending the message
+- `ISM_SALT`: a salt for deploying the ISM the router uses. The provided in this repo is an `RoutingIsm` which allows
+  the user indicate the ISM used when sending the message
 - `ROUTER_IMPLEMENTATION`: the address of an existing implementation in the network
 - `ISM`: the address of an existing implementation in the network
 - `CUSTOM_HOOK`: some custom hook address to be set, address zero indicates the Mailbox default hook should be used
 
 For enrolling routers you have to run `yarn run:enrollRouters`. Make sure the following environment variable are set:
+
 - `ROUTER_OWNER_PK`: the router's owner private key. Only the owner can enroll routers
 - `ROUTER`: address of the local router
 - `ROUTERS`: a list of routes addresses, separated by commas
@@ -37,7 +42,9 @@ For enrolling routers you have to run `yarn run:enrollRouters`. Make sure the fo
 
 ## Example usage
 
-Running the example script `yarn run:interchainDeploy` would deploy a [TestDeployContract](./script/utils/TestDeployContract.sol) from the chain you set on `NETWORK` to the one you set on `DESTINATION_NETWORK` using the router set on `ROUTER` and the salt on `EXAMPLE_SALT`
+Running the example script `yarn run:interchainDeploy` would deploy a
+[TestDeployContract](./script/utils/TestDeployContract.sol) from the chain you set on `NETWORK` to the one you set on
+`DESTINATION_NETWORK` using the router set on `ROUTER` and the salt on `EXAMPLE_SALT`
 
 ## Installing Dependencies
 
