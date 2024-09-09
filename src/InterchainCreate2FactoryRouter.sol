@@ -50,6 +50,13 @@ contract InterchainCreate2FactoryRouter is Router {
 
     // ============ External Functions ============
 
+    /**
+     * @notice Deploys a contract on the `_destination` chain
+     * @param _destination The remote domain
+     * @param _ism The address of the remote ISM, zero address for using the remote mailbox default ISM
+     * @param _salt The salt used for deploying the contract with CREATE2
+     * @param _bytecode The bytecode of the contract to deploy
+     */
     function deployContract(
         uint32 _destination,
         bytes32 _ism,
@@ -65,6 +72,14 @@ contract InterchainCreate2FactoryRouter is Router {
         return _dispatchMessage(_destination, _ism, _body, "");
     }
 
+    /**
+     * @notice Deploys a contract on the `_destination` chain with hook metadata
+     * @param _destination The remote domain
+     * @param _ism The address of the remote ISM, zero address for using the remote mailbox default ISM
+     * @param _salt The salt used for deploying the contract with CREATE2
+     * @param _bytecode The bytecode of the contract to deploy
+     * @param _hookMetadata The hook metadata to override with for the hook set by the owner
+     */
     function deployContract(
         uint32 _destination,
         bytes32 _ism,
@@ -81,6 +96,14 @@ contract InterchainCreate2FactoryRouter is Router {
         return _dispatchMessage(_destination, _ism, _body, _hookMetadata);
     }
 
+    /**
+     * @notice Deploys and initialize a contract on the `_destination` chain
+     * @param _destination The remote domain
+     * @param _ism The address of the remote ISM, zero address for using the remote mailbox default ISM
+     * @param _salt The salt used for deploying the contract with CREATE2
+     * @param _bytecode The bytecode of the contract to deploy
+     * @param _initCode The initialization that is called after the contract is deployed
+     */
     function deployContractAndInit(
         uint32 _destination,
         bytes32 _ism,
@@ -97,6 +120,15 @@ contract InterchainCreate2FactoryRouter is Router {
         return _dispatchMessage(_destination, _ism, _body, "");
     }
 
+    /**
+     * @notice Deploys and initialize a contract on the `_destination` chain with hook metadata
+     * @param _destination The remote domain
+     * @param _ism The address of the remote ISM, zero address for using the remote mailbox default ISM
+     * @param _salt The salt used for deploying the contract with CREATE2
+     * @param _bytecode The bytecode of the contract to deploy
+     * @param _initCode The initialization that is called after the contract is deployed
+     * @param _hookMetadata The hook metadata to override with for the hook set by the owner
+     */
     function deployContractAndInit(
         uint32 _destination,
         bytes32 _ism,
@@ -156,6 +188,10 @@ contract InterchainCreate2FactoryRouter is Router {
 
     // ============ Internal Functions ============
 
+    /**
+     * @notice Deploys the contract using the data from an incoming message
+     * @param _message The message containing the data sent by the remote router
+     */
     function _handle(uint32, bytes32, bytes calldata _message) internal override {
         (bytes32 _sender,, bytes32 _salt, bytes memory _bytecode, bytes memory _initCode) =
             InterchainCreate2FactoryMessage.decode(_message);
