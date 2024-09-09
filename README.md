@@ -53,8 +53,8 @@ Foundry typically uses git submodules to manage dependencies, but this template 
 
 This is how to install dependencies:
 
-1. Install the dependency using your preferred package manager, e.g. `bun install dependency-name`
-   - Use this syntax to install from GitHub: `bun install github:username/repo-name`
+1. Install the dependency using your preferred package manager, e.g. `yarn install dependency-name`
+   - Use this syntax to install from GitHub: `yarn install github:username/repo-name`
 2. Add a remapping for the dependency in [remappings.txt](./remappings.txt), e.g.
    `dependency-name=node_modules/dependency-name`
 
