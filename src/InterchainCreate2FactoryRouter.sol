@@ -40,15 +40,50 @@ contract InterchainCreate2FactoryRouter is Router {
 
     /**
      * @notice Initializes the contract with HyperlaneConnectionClient contracts
+     * @param _domains The domains of the remote Application Routers
      * @param _customHook used by the Router to set the hook to override with
      * @param _interchainSecurityModule The address of the local ISM contract
      * @param _owner The address with owner privileges
      */
-    function initialize(address _customHook, address _interchainSecurityModule, address _owner) external initializer {
+    function initialize(
+        uint32[] calldata _domains,
+        address _customHook,
+        address _interchainSecurityModule,
+        address _owner
+    ) external initializer {
         _MailboxClient_initialize(_customHook, _interchainSecurityModule, _owner);
+
+        uint256 length = _domains.length;
+        for (uint256 i = 0; i < length; i += 1) {
+            _enrollRemoteRouter(_domains[i], TypeCasts.addressToBytes32(address(this)));
+        }
     }
 
     // ============ External Functions ============
+
+    /**
+     * @notice Register the address of a Router contract with the same address as this for the same Application on a
+     * remote chain
+     * @param _domain The domain of the remote Application Router
+     */
+    function enrollRemoteDomain(
+        uint32 _domain
+    ) external virtual onlyOwner {
+        _enrollRemoteRouter(_domain, TypeCasts.addressToBytes32(address(this)));
+    }
+
+    /**
+     * @notice Batch version of `enrollRemoteDomain
+     * @param _domains The domains of the remote Application Routers
+     */
+    function enrollRemoteDomains(
+        uint32[] calldata _domains
+    ) external virtual onlyOwner {
+        uint256 length = _domains.length;
+        for (uint256 i = 0; i < length; i += 1) {
+            _enrollRemoteRouter(_domains[i], TypeCasts.addressToBytes32(address(this)));
+        }
+    }
 
     /**
      * @notice Deploys a contract on the `_destination` chain

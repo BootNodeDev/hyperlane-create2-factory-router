@@ -73,6 +73,7 @@ contract InterchainCreate2FactoryRouterBase is Test {
     // address internal sender = makeAddr("sender");
 
     function deployProxiedRouter(
+        uint32[] memory _domains,
         MockMailbox _mailbox,
         IPostDispatchHook _customHook,
         IInterchainSecurityModule _ism,
@@ -87,7 +88,7 @@ contract InterchainCreate2FactoryRouterBase is Test {
             address(implementation),
             admin,
             abi.encodeWithSelector(
-                InterchainCreate2FactoryRouter.initialize.selector, address(_customHook), address(_ism), _owner
+                InterchainCreate2FactoryRouter.initialize.selector, _domains, address(_customHook), address(_ism), _owner
             )
         );
 
@@ -104,9 +105,11 @@ contract InterchainCreate2FactoryRouterBase is Test {
 
         testIsm = new TestIsm();
 
-        originRouter = deployProxiedRouter(environment.mailboxes(origin), environment.igps(destination), ism, owner);
+        uint32[] memory domains = new uint32[](0);
+
+        originRouter = deployProxiedRouter(domains, environment.mailboxes(origin), environment.igps(destination), ism, owner);
         destinationRouter =
-            deployProxiedRouter(environment.mailboxes(destination), environment.igps(destination), ism, owner);
+            deployProxiedRouter(domains, environment.mailboxes(destination), environment.igps(destination), ism, owner);
 
         environment.mailboxes(origin).setDefaultHook(address(igp));
 
@@ -129,6 +132,45 @@ contract InterchainCreate2FactoryRouterTest is InterchainCreate2FactoryRouterBas
 
         vm.stopPrank();
         _;
+    }
+
+    function testFuzz_enrollRemoteDoamain(uint32 domain) public {
+
+        // act
+        vm.prank(owner);
+        originRouter.enrollRemoteDomain(domain);
+
+        // assert
+        bytes32 actualRouter = originRouter.routers(domain);
+        assertEq(actualRouter, TypeCasts.addressToBytes32(address(originRouter)));
+    }
+
+
+    function testFuzz_enrollRemoteDoamains(uint8 count, uint32 domain) public {
+        vm.assume(count > 0 && count < domain);
+
+        // arrange
+        // count - # of domains and routers
+        uint32[] memory domains = new uint32[](count);
+        for (uint256 i = 0; i < count; i++) {
+            domains[i] = domain - uint32(i);
+        }
+
+        // act
+        vm.prank(owner);
+        originRouter.enrollRemoteDomains(domains);
+
+        // assert
+        uint32[] memory actualDomains = originRouter.domains();
+        assertEq(actualDomains.length, domains.length);
+        assertEq(abi.encode(originRouter.domains()), abi.encode(domains));
+
+        for (uint256 i = 0; i < count; i++) {
+            bytes32 actualRouter = originRouter.routers(domains[i]);
+
+            assertEq(actualRouter, TypeCasts.addressToBytes32(address(originRouter)));
+            assertEq(actualDomains[i], domains[i]);
+        }
     }
 
     function testFuzz_enrollRemoteRouters(uint8 count, uint32 domain, bytes32 router) public {
