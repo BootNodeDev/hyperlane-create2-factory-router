@@ -49,15 +49,14 @@ contract DeployRouter is Script {
         bytes memory routerBytecode = abi.encodePacked(
             routerCreation,
             abi.encode(
-              address(routerImpl),
-              admin,
-              abi.encodeWithSelector(InterchainCreate2FactoryRouter.initialize.selector, customHook, ism, owner)
+                address(routerImpl),
+                admin,
+                abi.encodeWithSelector(InterchainCreate2FactoryRouter.initialize.selector, customHook, ism, owner)
             )
         );
 
-        TransparentUpgradeableProxy proxy = TransparentUpgradeableProxy(
-          payable(ICreateX(createX).deployCreate3(routerSalt, routerBytecode))
-        );
+        TransparentUpgradeableProxy proxy =
+            TransparentUpgradeableProxy(payable(ICreateX(createX).deployCreate3(routerSalt, routerBytecode)));
 
         vm.stopBroadcast();
 

@@ -50,7 +50,10 @@ contract InterchainCreate2FactoryRouter is Router {
         address _customHook,
         address _interchainSecurityModule,
         address _owner
-    ) external initializer {
+    )
+        external
+        initializer
+    {
         _MailboxClient_initialize(_customHook, _interchainSecurityModule, _owner);
 
         uint256 length = _domains.length;
@@ -66,9 +69,7 @@ contract InterchainCreate2FactoryRouter is Router {
      * remote chain
      * @param _domain The domain of the remote Application Router
      */
-    function enrollRemoteDomain(
-        uint32 _domain
-    ) external virtual onlyOwner {
+    function enrollRemoteDomain(uint32 _domain) external virtual onlyOwner {
         _enrollRemoteRouter(_domain, TypeCasts.addressToBytes32(address(this)));
     }
 
@@ -76,9 +77,7 @@ contract InterchainCreate2FactoryRouter is Router {
      * @notice Batch version of `enrollRemoteDomain
      * @param _domains The domains of the remote Application Routers
      */
-    function enrollRemoteDomains(
-        uint32[] calldata _domains
-    ) external virtual onlyOwner {
+    function enrollRemoteDomains(uint32[] calldata _domains) external virtual onlyOwner {
         uint256 length = _domains.length;
         for (uint256 i = 0; i < length; i += 1) {
             _enrollRemoteRouter(_domains[i], TypeCasts.addressToBytes32(address(this)));

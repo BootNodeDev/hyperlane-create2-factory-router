@@ -88,7 +88,11 @@ contract InterchainCreate2FactoryRouterBase is Test {
             address(implementation),
             admin,
             abi.encodeWithSelector(
-                InterchainCreate2FactoryRouter.initialize.selector, _domains, address(_customHook), address(_ism), _owner
+                InterchainCreate2FactoryRouter.initialize.selector,
+                _domains,
+                address(_customHook),
+                address(_ism),
+                _owner
             )
         );
 
@@ -107,7 +111,8 @@ contract InterchainCreate2FactoryRouterBase is Test {
 
         uint32[] memory domains = new uint32[](0);
 
-        originRouter = deployProxiedRouter(domains, environment.mailboxes(origin), environment.igps(destination), ism, owner);
+        originRouter =
+            deployProxiedRouter(domains, environment.mailboxes(origin), environment.igps(destination), ism, owner);
         destinationRouter =
             deployProxiedRouter(domains, environment.mailboxes(destination), environment.igps(destination), ism, owner);
 
@@ -135,7 +140,6 @@ contract InterchainCreate2FactoryRouterTest is InterchainCreate2FactoryRouterBas
     }
 
     function testFuzz_enrollRemoteDoamain(uint32 domain) public {
-
         // act
         vm.prank(owner);
         originRouter.enrollRemoteDomain(domain);
@@ -144,7 +148,6 @@ contract InterchainCreate2FactoryRouterTest is InterchainCreate2FactoryRouterBas
         bytes32 actualRouter = originRouter.routers(domain);
         assertEq(actualRouter, TypeCasts.addressToBytes32(address(originRouter)));
     }
-
 
     function testFuzz_enrollRemoteDoamains(uint8 count, uint32 domain) public {
         vm.assume(count > 0 && count < domain);
