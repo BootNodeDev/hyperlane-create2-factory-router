@@ -51,10 +51,7 @@ contract TestInterchainGasPaymaster is InterchainGasPaymaster {
         initialize(msg.sender, msg.sender);
     }
 
-    function quoteGasPayment(
-        uint32,
-        uint256 gasAmount
-    ) public view override returns (uint256) {
+    function quoteGasPayment(uint32, uint256 gasAmount) public view override returns (uint256) {
         return gasPrice * gasAmount;
     }
 
@@ -259,7 +256,9 @@ contract InterchainCreate2FactoryRouterTest is InterchainCreate2FactoryRouterBas
 
         // assert
         assertEq(
-            originRouter.quoteGasPaymentWithOverrides(destination, destinationRouterB32, address(igpOverride), messageBody, new bytes(0)),
+            originRouter.quoteGasPaymentWithOverrides(
+                destination, destinationRouterB32, address(igpOverride), messageBody, new bytes(0)
+            ),
             igpOverride.quoteGasPayment(destination, igpOverride.getDefaultGasUsage())
         );
     }
@@ -292,7 +291,9 @@ contract InterchainCreate2FactoryRouterTest is InterchainCreate2FactoryRouterBas
 
         // assert
         assertEq(
-            originRouter.quoteGasPaymentWithOverrides(destination, destinationRouterB32, address(igpOverride), messageBody, hookMetadata),
+            originRouter.quoteGasPaymentWithOverrides(
+                destination, destinationRouterB32, address(igpOverride), messageBody, hookMetadata
+            ),
             igpOverride.quoteGasPayment(destination, GAS_LIMIT_OVERRIDE)
         );
     }
@@ -301,7 +302,15 @@ contract InterchainCreate2FactoryRouterTest is InterchainCreate2FactoryRouterBas
         assertContractDeployedOverrides(destinationRouter, _sender, _salt, _bytecode, _ism);
     }
 
-    function assertContractDeployedOverrides(InterchainCreate2FactoryRouter _router, address _sender, bytes32 _salt, bytes memory _bytecode, address _ism) private {
+    function assertContractDeployedOverrides(
+        InterchainCreate2FactoryRouter _router,
+        address _sender,
+        bytes32 _salt,
+        bytes memory _bytecode,
+        address _ism
+    )
+        private
+    {
         address expectedAddress = _router.deployedAddress(_sender, _salt, _bytecode);
 
         assertFalse(Address.isContract(expectedAddress));
@@ -356,7 +365,15 @@ contract InterchainCreate2FactoryRouterTest is InterchainCreate2FactoryRouterBas
         assertIgpPaymentOverrides(igp, _balanceBefore, _balanceAfter, _gasLimit);
     }
 
-    function assertIgpPaymentOverrides(TestInterchainGasPaymaster _igp, uint256 _balanceBefore, uint256 _balanceAfter, uint256 _gasLimit) private view {
+    function assertIgpPaymentOverrides(
+        TestInterchainGasPaymaster _igp,
+        uint256 _balanceBefore,
+        uint256 _balanceAfter,
+        uint256 _gasLimit
+    )
+        private
+        view
+    {
         uint256 expectedGasPayment = _gasLimit * _igp.gasPrice();
         assertEq(_balanceBefore - _balanceAfter, expectedGasPayment);
         assertEq(address(_igp).balance, expectedGasPayment);
@@ -681,7 +698,14 @@ contract InterchainCreate2FactoryRouterTest is InterchainCreate2FactoryRouterBas
     }
 
     // TODO - add tests for deployContractWithOverrides
-        function testFuzz_deployContractOverrides(address sender, bytes32 salt, uint256 _gasPriceOverride) public enrollRouters {
+    function testFuzz_deployContractOverrides(
+        address sender,
+        bytes32 salt,
+        uint256 _gasPriceOverride
+    )
+        public
+        enrollRouters
+    {
         assumeSender(sender);
         vm.assume(_gasPriceOverride < type(uint16).max);
 
@@ -696,7 +720,16 @@ contract InterchainCreate2FactoryRouterTest is InterchainCreate2FactoryRouterBas
         // act
         bytes memory bytecode = type(SomeContract).creationCode;
         vm.prank(sender);
-        originRouter.deployContractWithOverrides{ value: gasPaymentQuote }(destination, destinationRouterOverrideB32, "", salt, address(igpOverride), bytecode, new bytes(0), new bytes(0));
+        originRouter.deployContractWithOverrides{ value: gasPaymentQuote }(
+            destination,
+            destinationRouterOverrideB32,
+            "",
+            salt,
+            address(igpOverride),
+            bytecode,
+            new bytes(0),
+            new bytes(0)
+        );
 
         // assert
         uint256 balanceAfter = address(sender).balance;

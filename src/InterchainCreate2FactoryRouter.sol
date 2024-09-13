@@ -145,11 +145,7 @@ contract InterchainCreate2FactoryRouter is Router {
      * @dev Does not need to be onlyRemoteRouter, as this application is designed
      * to receive messages from untrusted remote contracts.
      */
-    function handle(
-        uint32,
-        bytes32,
-        bytes calldata _message
-    ) external payable override onlyMailbox {
+    function handle(uint32, bytes32, bytes calldata _message) external payable override onlyMailbox {
         (bytes32 _sender,, bytes32 _salt, bytes memory _bytecode, bytes memory _initCode) =
             InterchainCreate2FactoryMessage.decode(_message);
 
@@ -293,7 +289,6 @@ contract InterchainCreate2FactoryRouter is Router {
     function _handle(uint32, bytes32, bytes calldata) internal pure override {
         assert(false);
     }
-
 
     /**
      * @notice Dispatches an InterchainCreate2FactoryMessage to the remote router
