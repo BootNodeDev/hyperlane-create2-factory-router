@@ -140,6 +140,29 @@ contract InterchainCreate2FactoryRouter is Router {
     }
 
     /**
+     * @notice Handles dispatched messages by deploying the contract using the data from an incoming message
+     * @param _message The message containing the data sent by the remote router
+     * @dev Does not need to be onlyRemoteRouter, as this application is designed
+     * to receive messages from untrusted remote contracts.
+     */
+    function handle(
+        uint32,
+        bytes32,
+        bytes calldata _message
+    ) external payable override onlyMailbox {
+        (bytes32 _sender,, bytes32 _salt, bytes memory _bytecode, bytes memory _initCode) =
+            InterchainCreate2FactoryMessage.decode(_message);
+
+        address deployedAddress_ = _deploy(_bytecode, _getSalt(_sender, _salt));
+
+        if (_initCode.length > 0) {
+            // solhint-disable-next-line avoid-low-level-calls
+            (bool success,) = deployedAddress_.call(_initCode);
+            require(success, "failed to init");
+        }
+    }
+
+    /**
      * @notice Returns the gas payment required to dispatch a given messageBody to the given domain's router with gas
      * limit override.
      * @param _destination The domain of the destination router.
@@ -265,21 +288,12 @@ contract InterchainCreate2FactoryRouter is Router {
     // ============ Internal Functions ============
 
     /**
-     * @notice Deploys the contract using the data from an incoming message
-     * @param _message The message containing the data sent by the remote router
+     * @dev Required for use of Router, compiler will not include this function in the bytecode
      */
-    function _handle(uint32, bytes32, bytes calldata _message) internal override {
-        (bytes32 _sender,, bytes32 _salt, bytes memory _bytecode, bytes memory _initCode) =
-            InterchainCreate2FactoryMessage.decode(_message);
-
-        address deployedAddress_ = _deploy(_bytecode, _getSalt(_sender, _salt));
-
-        if (_initCode.length > 0) {
-            // solhint-disable-next-line avoid-low-level-calls
-            (bool success,) = deployedAddress_.call(_initCode);
-            require(success, "failed to init");
-        }
+    function _handle(uint32, bytes32, bytes calldata) internal pure override {
+        assert(false);
     }
+
 
     /**
      * @notice Dispatches an InterchainCreate2FactoryMessage to the remote router

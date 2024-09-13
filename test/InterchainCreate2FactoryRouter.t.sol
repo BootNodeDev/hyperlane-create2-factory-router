@@ -12,9 +12,9 @@ import { MockMailbox } from "@hyperlane-xyz/mock/MockMailbox.sol";
 import { MockHyperlaneEnvironment } from "@hyperlane-xyz/mock/MockHyperlaneEnvironment.sol";
 import { TypeCasts } from "@hyperlane-xyz/libs/TypeCasts.sol";
 import { IInterchainSecurityModule } from "@hyperlane-xyz/interfaces/IInterchainSecurityModule.sol";
-import { TestInterchainGasPaymaster } from "@hyperlane-xyz/test/TestInterchainGasPaymaster.sol";
 import { IPostDispatchHook } from "@hyperlane-xyz/interfaces/hooks/IPostDispatchHook.sol";
 import { TestIsm } from "@hyperlane-xyz/test/TestIsm.sol";
+import { InterchainGasPaymaster } from "@hyperlane-xyz/hooks/igp/InterchainGasPaymaster.sol";
 
 import { InterchainCreate2FactoryRouter } from "src/InterchainCreate2FactoryRouter.sol";
 import { InterchainCreate2FactoryIsm } from "src/InterchainCreate2FactoryIsm.sol";
@@ -44,6 +44,29 @@ contract FailingIsm is IInterchainSecurityModule {
     }
 }
 
+contract TestInterchainGasPaymaster is InterchainGasPaymaster {
+    uint256 public gasPrice = 10;
+
+    constructor() {
+        initialize(msg.sender, msg.sender);
+    }
+
+    function quoteGasPayment(
+        uint32,
+        uint256 gasAmount
+    ) public view override returns (uint256) {
+        return gasPrice * gasAmount;
+    }
+
+    function setGasPrice(uint256 _gasPrice) public {
+        gasPrice = _gasPrice;
+    }
+
+    function getDefaultGasUsage() public pure returns (uint256) {
+        return DEFAULT_GAS_USAGE;
+    }
+}
+
 contract InterchainCreate2FactoryRouterBase is Test {
     using TypeCasts for address;
 
@@ -56,16 +79,20 @@ contract InterchainCreate2FactoryRouterBase is Test {
     uint32 internal destination = 2;
 
     TestInterchainGasPaymaster internal igp;
+    TestInterchainGasPaymaster internal igpOverride;
     InterchainCreate2FactoryIsm internal ism;
     InterchainCreate2FactoryRouter internal originRouter;
     InterchainCreate2FactoryRouter internal destinationRouter;
+    InterchainCreate2FactoryRouter internal destinationRouterOverride;
 
     TestIsm internal testIsm;
     bytes32 internal testIsmB32;
     bytes32 internal originRouterB32;
     bytes32 internal destinationRouterB32;
+    bytes32 internal destinationRouterOverrideB32;
 
     uint256 gasPaymentQuote;
+    uint256 gasPaymentQuoteOverride;
     uint256 internal constant GAS_LIMIT_OVERRIDE = 60_000;
 
     address internal admin = makeAddr("admin");
@@ -103,6 +130,8 @@ contract InterchainCreate2FactoryRouterBase is Test {
         environment = new MockHyperlaneEnvironment(origin, destination);
 
         igp = new TestInterchainGasPaymaster();
+        igpOverride = new TestInterchainGasPaymaster();
+
         gasPaymentQuote = igp.quoteGasPayment(destination, igp.getDefaultGasUsage());
 
         ism = new InterchainCreate2FactoryIsm(address(environment.mailboxes(destination)));
@@ -116,10 +145,14 @@ contract InterchainCreate2FactoryRouterBase is Test {
         destinationRouter =
             deployProxiedRouter(domains, environment.mailboxes(destination), environment.igps(destination), ism, owner);
 
+        destinationRouterOverride =
+            deployProxiedRouter(domains, environment.mailboxes(destination), environment.igps(destination), ism, owner);
+
         environment.mailboxes(origin).setDefaultHook(address(igp));
 
         originRouterB32 = TypeCasts.addressToBytes32(address(originRouter));
         destinationRouterB32 = TypeCasts.addressToBytes32(address(destinationRouter));
+        destinationRouterOverrideB32 = TypeCasts.addressToBytes32(address(destinationRouterOverride));
         testIsmB32 = TypeCasts.addressToBytes32(address(testIsm));
     }
 
@@ -215,15 +248,20 @@ contract InterchainCreate2FactoryRouterTest is InterchainCreate2FactoryRouterBas
         assertEq(originRouter.quoteGasPayment(destination, messageBody, new bytes(0)), gasPaymentQuote);
     }
 
-    // TODO
-    function test_quoteGasPaymentWithOverrides() public enrollRouters {
+    function test_quoteGasPaymentWithOverrides(uint256 _gasPriceOverride) public enrollRouters {
+        vm.assume(_gasPriceOverride < type(uint16).max);
+
         // arrange
+        igpOverride.setGasPrice(_gasPriceOverride);
         bytes memory messageBody = InterchainCreate2FactoryMessage.encode(
             address(1), TypeCasts.addressToBytes32(address(0)), "", new bytes(0), new bytes(0)
         );
 
         // assert
-        assertEq(originRouter.quoteGasPayment(destination, messageBody, new bytes(0)), gasPaymentQuote);
+        assertEq(
+            originRouter.quoteGasPaymentWithOverrides(destination, destinationRouterB32, address(igpOverride), messageBody, new bytes(0)),
+            igpOverride.quoteGasPayment(destination, igpOverride.getDefaultGasUsage())
+        );
     }
 
     function test_quoteGasPayment_gasLimitOverride() public enrollRouters {
@@ -241,14 +279,36 @@ contract InterchainCreate2FactoryRouterTest is InterchainCreate2FactoryRouterBas
         );
     }
 
+    function test_quoteGasPaymentOverride_gasLimitOverride(uint256 _gasPriceOverride) public enrollRouters {
+        vm.assume(_gasPriceOverride < type(uint16).max);
+
+        // arrange
+        igpOverride.setGasPrice(_gasPriceOverride);
+        bytes memory messageBody = InterchainCreate2FactoryMessage.encode(
+            address(1), TypeCasts.addressToBytes32(address(0)), "", new bytes(0), new bytes(0)
+        );
+
+        bytes memory hookMetadata = StandardHookMetadata.overrideGasLimit(GAS_LIMIT_OVERRIDE);
+
+        // assert
+        assertEq(
+            originRouter.quoteGasPaymentWithOverrides(destination, destinationRouterB32, address(igpOverride), messageBody, hookMetadata),
+            igpOverride.quoteGasPayment(destination, GAS_LIMIT_OVERRIDE)
+        );
+    }
+
     function assertContractDeployed(address _sender, bytes32 _salt, bytes memory _bytecode, address _ism) private {
-        address expectedAddress = destinationRouter.deployedAddress(_sender, _salt, _bytecode);
+        assertContractDeployedOverrides(destinationRouter, _sender, _salt, _bytecode, _ism);
+    }
+
+    function assertContractDeployedOverrides(InterchainCreate2FactoryRouter _router, address _sender, bytes32 _salt, bytes memory _bytecode, address _ism) private {
+        address expectedAddress = _router.deployedAddress(_sender, _salt, _bytecode);
 
         assertFalse(Address.isContract(expectedAddress));
 
         vm.expectCall(address(_ism), abi.encodeWithSelector(TestIsm.verify.selector));
 
-        vm.expectEmit(true, true, true, true, address(destinationRouter));
+        vm.expectEmit(true, true, true, true, address(_router));
         emit Deployed(keccak256(_bytecode), keccak256(abi.encode(_sender, _salt)), expectedAddress);
         environment.processNextPendingMessage();
 
@@ -292,10 +352,14 @@ contract InterchainCreate2FactoryRouterTest is InterchainCreate2FactoryRouterBas
         SomeContract(expectedAddress).someFunction();
     }
 
-    function assertIgpPayment(uint256 balanceBefore, uint256 balanceAfter, uint256 gasLimit) private view {
-        uint256 expectedGasPayment = gasLimit * igp.gasPrice();
-        assertEq(balanceBefore - balanceAfter, expectedGasPayment);
-        assertEq(address(igp).balance, expectedGasPayment);
+    function assertIgpPayment(uint256 _balanceBefore, uint256 _balanceAfter, uint256 _gasLimit) private view {
+        assertIgpPaymentOverrides(igp, _balanceBefore, _balanceAfter, _gasLimit);
+    }
+
+    function assertIgpPaymentOverrides(TestInterchainGasPaymaster _igp, uint256 _balanceBefore, uint256 _balanceAfter, uint256 _gasLimit) private view {
+        uint256 expectedGasPayment = _gasLimit * _igp.gasPrice();
+        assertEq(_balanceBefore - _balanceAfter, expectedGasPayment);
+        assertEq(address(_igp).balance, expectedGasPayment);
     }
 
     function assumeSender(address _sender) internal view {
@@ -617,4 +681,27 @@ contract InterchainCreate2FactoryRouterTest is InterchainCreate2FactoryRouterBas
     }
 
     // TODO - add tests for deployContractWithOverrides
+        function testFuzz_deployContractOverrides(address sender, bytes32 salt, uint256 _gasPriceOverride) public enrollRouters {
+        assumeSender(sender);
+        vm.assume(_gasPriceOverride < type(uint16).max);
+
+        igpOverride.setGasPrice(_gasPriceOverride);
+        gasPaymentQuote = igpOverride.quoteGasPayment(destination, igpOverride.getDefaultGasUsage());
+
+        // arrange
+        vm.deal(sender, gasPaymentQuote);
+
+        uint256 balanceBefore = address(sender).balance;
+
+        // act
+        bytes memory bytecode = type(SomeContract).creationCode;
+        vm.prank(sender);
+        originRouter.deployContractWithOverrides{ value: gasPaymentQuote }(destination, destinationRouterOverrideB32, "", salt, address(igpOverride), bytecode, new bytes(0), new bytes(0));
+
+        // assert
+        uint256 balanceAfter = address(sender).balance;
+        address _ism = address(environment.mailboxes(destination).defaultIsm());
+        assertContractDeployedOverrides(destinationRouterOverride, sender, salt, type(SomeContract).creationCode, _ism);
+        assertIgpPaymentOverrides(igpOverride, balanceBefore, balanceAfter, igpOverride.getDefaultGasUsage());
+    }
 }
