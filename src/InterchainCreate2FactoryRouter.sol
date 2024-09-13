@@ -5,6 +5,7 @@ pragma solidity 0.8.25;
 import { InterchainCreate2FactoryMessage } from "./libs/InterchainCreate2FactoryMessage.sol";
 
 // ============ External Imports ============
+import { IPostDispatchHook } from "@hyperlane-xyz/interfaces/hooks/IPostDispatchHook.sol";
 import { TypeCasts } from "@hyperlane-xyz/libs/TypeCasts.sol";
 import { Router } from "@hyperlane-xyz/client/Router.sol";
 import { Create2 } from "@openzeppelin/contracts/utils/Create2.sol";
@@ -28,7 +29,9 @@ contract InterchainCreate2FactoryRouter is Router {
 
     // ============ Events ============
 
-    event RemoteDeployDispatched(uint32 indexed destination, address indexed owner, uint32 _destination, bytes32 ism);
+    event RemoteDeployDispatched(
+        uint32 indexed destination, bytes32 indexed router, address indexed owner, uint32 _destination, bytes32 ism
+    );
 
     event Deployed(bytes32 indexed bytecodeHash, bytes32 indexed salt, address indexed deployedAddress);
 
@@ -90,55 +93,9 @@ contract InterchainCreate2FactoryRouter is Router {
      * @param _ism The address of the remote ISM, zero address for using the remote mailbox default ISM
      * @param _salt The salt used for deploying the contract with CREATE2
      * @param _bytecode The bytecode of the contract to deploy
+     * @param _initCode The initialization that is called after the contract is deployed, empty for no initialization
      */
     function deployContract(
-        uint32 _destination,
-        bytes32 _ism,
-        bytes32 _salt,
-        bytes memory _bytecode
-    )
-        external
-        payable
-        returns (bytes32)
-    {
-        bytes memory _body = InterchainCreate2FactoryMessage.encode(msg.sender, _ism, _salt, _bytecode, new bytes(0));
-
-        return _dispatchMessage(_destination, _ism, _body, "");
-    }
-
-    /**
-     * @notice Deploys a contract on the `_destination` chain with hook metadata
-     * @param _destination The remote domain
-     * @param _ism The address of the remote ISM, zero address for using the remote mailbox default ISM
-     * @param _salt The salt used for deploying the contract with CREATE2
-     * @param _bytecode The bytecode of the contract to deploy
-     * @param _hookMetadata The hook metadata to override with for the hook set by the owner
-     */
-    function deployContract(
-        uint32 _destination,
-        bytes32 _ism,
-        bytes32 _salt,
-        bytes memory _bytecode,
-        bytes memory _hookMetadata
-    )
-        external
-        payable
-        returns (bytes32)
-    {
-        bytes memory _body = InterchainCreate2FactoryMessage.encode(msg.sender, _ism, _salt, _bytecode, new bytes(0));
-
-        return _dispatchMessage(_destination, _ism, _body, _hookMetadata);
-    }
-
-    /**
-     * @notice Deploys and initialize a contract on the `_destination` chain
-     * @param _destination The remote domain
-     * @param _ism The address of the remote ISM, zero address for using the remote mailbox default ISM
-     * @param _salt The salt used for deploying the contract with CREATE2
-     * @param _bytecode The bytecode of the contract to deploy
-     * @param _initCode The initialization that is called after the contract is deployed
-     */
-    function deployContractAndInit(
         uint32 _destination,
         bytes32 _ism,
         bytes32 _salt,
@@ -149,21 +106,21 @@ contract InterchainCreate2FactoryRouter is Router {
         payable
         returns (bytes32)
     {
-        bytes memory _body = InterchainCreate2FactoryMessage.encode(msg.sender, _ism, _salt, _bytecode, _initCode);
+        bytes32 _router = _mustHaveRemoteRouter(_destination);
 
-        return _dispatchMessage(_destination, _ism, _body, "");
+        return deployContractWithOverrides(_destination, _router, _ism, _salt, address(hook), _bytecode, _initCode);
     }
 
     /**
-     * @notice Deploys and initialize a contract on the `_destination` chain with hook metadata
+     * @notice Deploys a contract on the `_destination` chain with hook metadata
      * @param _destination The remote domain
      * @param _ism The address of the remote ISM, zero address for using the remote mailbox default ISM
      * @param _salt The salt used for deploying the contract with CREATE2
      * @param _bytecode The bytecode of the contract to deploy
-     * @param _initCode The initialization that is called after the contract is deployed
+     * @param _initCode The initialization that is called after the contract is deployed, empty for no initialization
      * @param _hookMetadata The hook metadata to override with for the hook set by the owner
      */
-    function deployContractAndInit(
+    function deployContract(
         uint32 _destination,
         bytes32 _ism,
         bytes32 _salt,
@@ -175,9 +132,11 @@ contract InterchainCreate2FactoryRouter is Router {
         payable
         returns (bytes32)
     {
-        bytes memory _body = InterchainCreate2FactoryMessage.encode(msg.sender, _ism, _salt, _bytecode, _initCode);
+        bytes32 _router = _mustHaveRemoteRouter(_destination);
 
-        return _dispatchMessage(_destination, _ism, _body, _hookMetadata);
+        return deployContractWithOverrides(
+            _destination, _router, _ism, _salt, address(hook), _bytecode, _initCode, _hookMetadata
+        );
     }
 
     /**
@@ -200,6 +159,29 @@ contract InterchainCreate2FactoryRouter is Router {
     }
 
     /**
+     * @notice Returns the gas payment required to dispatch a given messageBody to the given domain's router with gas
+     * limit override.
+     * @param _destination The domain of the destination router.
+     * @param _router The destination router.
+     * @param _hook The a hook to override the default hook.
+     * @param _messageBody The message body to be dispatched.
+     * @param _hookMetadata The hook metadata to override with for the hook set by the owner
+     */
+    function quoteGasPaymentWithOverrides(
+        uint32 _destination,
+        bytes32 _router,
+        address _hook,
+        bytes memory _messageBody,
+        bytes memory _hookMetadata
+    )
+        external
+        view
+        returns (uint256 _gasPayment)
+    {
+        return mailbox.quoteDispatch(_destination, _router, _messageBody, _hookMetadata, IPostDispatchHook(_hook));
+    }
+
+    /**
      * @dev Returns the address where a contract will be stored if deployed via {deploy} or {deployAndInit} by `sender`.
      * Any change in the `bytecode`, `sender`, or `salt` will result in a new destination address.
      */
@@ -218,6 +200,66 @@ contract InterchainCreate2FactoryRouter is Router {
                 )
             )
         );
+    }
+
+    // ============ Public Functions ============
+
+    /**
+     * @notice Deploys and initialize a contract on the `_destination` chain with hook metadata
+     * @param _destination The remote domain
+     * @param _router The remote router address
+     * @param _ism The address of the remote ISM, zero address for using the remote mailbox default ISM
+     * @param _salt The salt used for deploying the contract with CREATE2
+     * @param _hook The address hook to override the default hook
+     * @param _bytecode The bytecode of the contract to deploy
+     * @param _initCode The initialization that is called after the contract is deployed
+     */
+    function deployContractWithOverrides(
+        uint32 _destination,
+        bytes32 _router,
+        bytes32 _ism,
+        bytes32 _salt,
+        address _hook,
+        bytes memory _bytecode,
+        bytes memory _initCode
+    )
+        public
+        payable
+        returns (bytes32)
+    {
+        bytes memory _body = InterchainCreate2FactoryMessage.encode(msg.sender, _ism, _salt, _bytecode, _initCode);
+
+        return _dispatchMessage(_destination, _router, _ism, _hook, _body, new bytes(0));
+    }
+
+    /**
+     * @notice Deploys and initialize a contract on the `_destination` chain with hook metadata
+     * @param _destination The remote domain
+     * @param _router The remote router address
+     * @param _ism The address of the remote ISM, zero address for using the remote mailbox default ISM
+     * @param _salt The salt used for deploying the contract with CREATE2
+     * @param _hook The address hook to override the default hook
+     * @param _bytecode The bytecode of the contract to deploy
+     * @param _initCode The initialization that is called after the contract is deployed
+     * @param _hookMetadata The hook metadata to override with for the hook set by the owner
+     */
+    function deployContractWithOverrides(
+        uint32 _destination,
+        bytes32 _router,
+        bytes32 _ism,
+        bytes32 _salt,
+        address _hook,
+        bytes memory _bytecode,
+        bytes memory _initCode,
+        bytes memory _hookMetadata
+    )
+        public
+        payable
+        returns (bytes32)
+    {
+        bytes memory _body = InterchainCreate2FactoryMessage.encode(msg.sender, _ism, _salt, _bytecode, _initCode);
+
+        return _dispatchMessage(_destination, _router, _ism, _hook, _body, _hookMetadata);
     }
 
     // ============ Internal Functions ============
@@ -242,22 +284,28 @@ contract InterchainCreate2FactoryRouter is Router {
     /**
      * @notice Dispatches an InterchainCreate2FactoryMessage to the remote router
      * @param _destination The remote domain
+     * @param _router The remote origin InterchainCreate2FactoryRouter
      * @param _ism The address of the remote ISM
+     * @param _hook The address hook
      * @param _messageBody The InterchainCreate2FactoryMessage body
      * @param _hookMetadata The hook metadata to override with for the hook set by the owner
      */
     function _dispatchMessage(
         uint32 _destination,
+        bytes32 _router,
         bytes32 _ism,
+        address _hook,
         bytes memory _messageBody,
         bytes memory _hookMetadata
     )
         private
         returns (bytes32)
     {
-        emit RemoteDeployDispatched(_destination, msg.sender, _destination, _ism);
+        emit RemoteDeployDispatched(_destination, _router, msg.sender, _destination, _ism);
 
-        return _Router_dispatch(_destination, msg.value, _messageBody, _hookMetadata, address(hook));
+        return mailbox.dispatch{ value: msg.value }(
+            _destination, _router, _messageBody, _hookMetadata, IPostDispatchHook(_hook)
+        );
     }
 
     /**

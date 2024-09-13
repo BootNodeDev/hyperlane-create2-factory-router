@@ -28,7 +28,7 @@ contract InterchainDeployExample is Script {
         uint256 gasPayment =
             InterchainCreate2FactoryRouter(localRouter).quoteGasPayment(destination, messageBody, new bytes(0));
 
-        bytes32 messageId = InterchainCreate2FactoryRouter(localRouter).deployContractAndInit{ value: gasPayment }(
+        bytes32 messageId = InterchainCreate2FactoryRouter(localRouter).deployContract{ value: gasPayment }(
             destination, ism, salt, bytecode, abi.encodeWithSelector(TestDeployContract.increment.selector)
         );
 

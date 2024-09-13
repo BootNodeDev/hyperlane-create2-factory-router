@@ -149,7 +149,7 @@ contract InterchainCreate2FactoryRouterTest is InterchainCreate2FactoryRouterBas
         assertEq(actualRouter, TypeCasts.addressToBytes32(address(originRouter)));
     }
 
-    function testFuzz_enrollRemoteDoamains(uint8 count, uint32 domain) public {
+    function testFuzz_enrollRemoteDomains(uint8 count, uint32 domain) public {
         vm.assume(count > 0 && count < domain);
 
         // arrange
@@ -206,6 +206,17 @@ contract InterchainCreate2FactoryRouterTest is InterchainCreate2FactoryRouterBas
     }
 
     function test_quoteGasPayment() public enrollRouters {
+        // arrange
+        bytes memory messageBody = InterchainCreate2FactoryMessage.encode(
+            address(1), TypeCasts.addressToBytes32(address(0)), "", new bytes(0), new bytes(0)
+        );
+
+        // assert
+        assertEq(originRouter.quoteGasPayment(destination, messageBody, new bytes(0)), gasPaymentQuote);
+    }
+
+    // TODO
+    function test_quoteGasPaymentWithOverrides() public enrollRouters {
         // arrange
         bytes memory messageBody = InterchainCreate2FactoryMessage.encode(
             address(1), TypeCasts.addressToBytes32(address(0)), "", new bytes(0), new bytes(0)
@@ -302,7 +313,7 @@ contract InterchainCreate2FactoryRouterTest is InterchainCreate2FactoryRouterBas
         bytes memory bytecode = type(SomeContract).creationCode;
         vm.prank(sender);
         vm.expectRevert("No router enrolled for domain: 2");
-        originRouter.deployContract{ value: gasPaymentQuote }(destination, "", salt, bytecode);
+        originRouter.deployContract{ value: gasPaymentQuote }(destination, "", salt, bytecode, new bytes(0));
     }
 
     function testFuzz_deployContract_defaultISM(address sender, bytes32 salt) public enrollRouters {
@@ -316,7 +327,7 @@ contract InterchainCreate2FactoryRouterTest is InterchainCreate2FactoryRouterBas
         // act
         bytes memory bytecode = type(SomeContract).creationCode;
         vm.prank(sender);
-        originRouter.deployContract{ value: gasPaymentQuote }(destination, "", salt, bytecode);
+        originRouter.deployContract{ value: gasPaymentQuote }(destination, "", salt, bytecode, new bytes(0));
 
         // assert
         uint256 balanceAfter = address(sender).balance;
@@ -338,7 +349,7 @@ contract InterchainCreate2FactoryRouterTest is InterchainCreate2FactoryRouterBas
         bytes memory initCode = abi.encodeWithSelector(SomeContract.someFunction.selector);
 
         vm.prank(sender);
-        originRouter.deployContractAndInit{ value: gasPaymentQuote }(destination, "", salt, bytecode, initCode);
+        originRouter.deployContract{ value: gasPaymentQuote }(destination, "", salt, bytecode, initCode);
 
         // assert
         uint256 balanceAfter = address(sender).balance;
@@ -369,7 +380,7 @@ contract InterchainCreate2FactoryRouterTest is InterchainCreate2FactoryRouterBas
         // act
         bytes memory bytecode = type(SomeContract).creationCode;
         vm.prank(sender);
-        originRouter.deployContract{ value: payment }(destination, "", salt, bytecode, metadata);
+        originRouter.deployContract{ value: payment }(destination, "", salt, bytecode, new bytes(0), metadata);
 
         // assert
         uint256 balanceAfter = address(sender).balance;
@@ -402,7 +413,7 @@ contract InterchainCreate2FactoryRouterTest is InterchainCreate2FactoryRouterBas
         bytes memory initCode = abi.encodeWithSelector(SomeContract.someFunction.selector);
 
         vm.prank(sender);
-        originRouter.deployContractAndInit{ value: payment }(destination, "", salt, bytecode, initCode, metadata);
+        originRouter.deployContract{ value: payment }(destination, "", salt, bytecode, initCode, metadata);
 
         // assert
         uint256 balanceAfter = address(sender).balance;
@@ -432,7 +443,7 @@ contract InterchainCreate2FactoryRouterTest is InterchainCreate2FactoryRouterBas
         bytes memory bytecode = type(SomeContract).creationCode;
         vm.prank(sender);
         vm.expectRevert("IGP: insufficient interchain gas payment");
-        originRouter.deployContract{ value: payment }(destination, "", salt, bytecode, metadata);
+        originRouter.deployContract{ value: payment }(destination, "", salt, bytecode, new bytes(0), metadata);
     }
 
     function testFuzz_deployContractAndInit_defaultISM_reverts_underpayment(
@@ -458,7 +469,7 @@ contract InterchainCreate2FactoryRouterTest is InterchainCreate2FactoryRouterBas
 
         vm.prank(sender);
         vm.expectRevert("IGP: insufficient interchain gas payment");
-        originRouter.deployContractAndInit{ value: payment }(destination, "", salt, bytecode, initCode, metadata);
+        originRouter.deployContract{ value: payment }(destination, "", salt, bytecode, initCode, metadata);
     }
 
     function testFuzz_deployContract_paramISM(address sender, bytes32 salt) public enrollRouters {
@@ -472,7 +483,7 @@ contract InterchainCreate2FactoryRouterTest is InterchainCreate2FactoryRouterBas
         // act
         bytes memory bytecode = type(SomeContract).creationCode;
         vm.prank(sender);
-        originRouter.deployContract{ value: gasPaymentQuote }(destination, testIsmB32, salt, bytecode);
+        originRouter.deployContract{ value: gasPaymentQuote }(destination, testIsmB32, salt, bytecode, new bytes(0));
 
         // assert
         uint256 balanceAfter = address(sender).balance;
@@ -493,7 +504,7 @@ contract InterchainCreate2FactoryRouterTest is InterchainCreate2FactoryRouterBas
         bytes memory initCode = abi.encodeWithSelector(SomeContract.someFunction.selector);
 
         vm.prank(sender);
-        originRouter.deployContractAndInit{ value: gasPaymentQuote }(destination, testIsmB32, salt, bytecode, initCode);
+        originRouter.deployContract{ value: gasPaymentQuote }(destination, testIsmB32, salt, bytecode, initCode);
 
         // assert
         uint256 balanceAfter = address(sender).balance;
@@ -523,7 +534,7 @@ contract InterchainCreate2FactoryRouterTest is InterchainCreate2FactoryRouterBas
         // act
         bytes memory bytecode = type(SomeContract).creationCode;
         vm.prank(sender);
-        originRouter.deployContract{ value: payment }(destination, testIsmB32, salt, bytecode, metadata);
+        originRouter.deployContract{ value: payment }(destination, testIsmB32, salt, bytecode, new bytes(0), metadata);
 
         // assert
         uint256 balanceAfter = address(sender).balance;
@@ -555,9 +566,7 @@ contract InterchainCreate2FactoryRouterTest is InterchainCreate2FactoryRouterBas
         bytes memory initCode = abi.encodeWithSelector(SomeContract.someFunction.selector);
 
         vm.prank(sender);
-        originRouter.deployContractAndInit{ value: payment }(
-            destination, testIsmB32, salt, bytecode, initCode, metadata
-        );
+        originRouter.deployContract{ value: payment }(destination, testIsmB32, salt, bytecode, initCode, metadata);
 
         // assert
         uint256 balanceAfter = address(sender).balance;
@@ -578,7 +587,7 @@ contract InterchainCreate2FactoryRouterTest is InterchainCreate2FactoryRouterBas
         // act
         bytes memory bytecode = type(SomeContract).creationCode;
         vm.prank(sender);
-        originRouter.deployContract{ value: gasPaymentQuote }(destination, failingIsm, salt, bytecode);
+        originRouter.deployContract{ value: gasPaymentQuote }(destination, failingIsm, salt, bytecode, new bytes(0));
 
         // assert
         vm.expectRevert(bytes(failureMessage));
@@ -600,10 +609,12 @@ contract InterchainCreate2FactoryRouterTest is InterchainCreate2FactoryRouterBas
         bytes memory initCode = abi.encodeWithSelector(SomeContract.someFunction.selector);
 
         vm.prank(sender);
-        originRouter.deployContractAndInit{ value: gasPaymentQuote }(destination, failingIsm, salt, bytecode, initCode);
+        originRouter.deployContract{ value: gasPaymentQuote }(destination, failingIsm, salt, bytecode, initCode);
 
         // assert
         vm.expectRevert(bytes(failureMessage));
         environment.processNextPendingMessage();
     }
+
+    // TODO - add tests for deployContractWithOverrides
 }
