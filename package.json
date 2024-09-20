@@ -40,9 +40,19 @@
     "test:coverage:report": "forge coverage --report lcov && genhtml lcov.info --branch-coverage --output-dir coverage",
     "deployRouter": "forge script script/DeployRouter.s.sol:DeployRouter -f $NETWORK --broadcast --verify --etherscan-api-key $ETHERSCAN_API_KEY --chain $NETWORK --slow -vvvv",
     "run:deployRouter": "dotenv-run-script deployRouter",
+    "deployICARouter": "forge script script/DeployICARouter.s.sol:DeployICARouter -f $NETWORK --broadcast --verify --etherscan-api-key $ETHERSCAN_API_KEY --chain $NETWORK --slow -vvvv",
+    "run:deployICARouter": "dotenv-run-script deployICARouter",
+    "deployHypERC20Imple": "forge script script/DeployHypERC20Imple.s.sol:DeployHypERC20Imple -f $NETWORK --broadcast --verify --etherscan-api-key $ETHERSCAN_API_KEY --chain $NETWORK --slow -vvvv",
+    "run:deployHypERC20Imple": "dotenv-run-script deployHypERC20Imple",
     "enrollRouters": "forge script script/EnrollRouters.s.sol:EnrollRouters -f $NETWORK --broadcast --slow -vvvv",
     "run:enrollRouters": "dotenv-run-script enrollRouters",
     "interchainDeploy": "forge script script/InterchainDeployExample.s.sol:InterchainDeployExample -f $NETWORK --broadcast --slow -vvvv",
-    "run:interchainDeploy": "dotenv-run-script interchainDeploy"
+    "run:interchainDeploy": "dotenv-run-script interchainDeploy",
+    "deployWarp": "forge script script/DeployWarp.s.sol:DeployWarp -f $NETWORK --slow -vvv --via-ir",
+    "run:deployWarp": "dotenv-run-script deployWarp",
+    "transferRemote": "forge script script/TransferRemote.s.sol:TransferRemote -f $NETWORK --broadcast --slow -vvv --via-ir",
+    "run:transferRemote": "dotenv-run-script transferRemote",
+    "bumpGas": "forge script script/BumpGas.s.sol:BumpGas -f $NETWORK --broadcast --slow -vvv --via-ir",
+    "run:bumpGas": "dotenv-run-script bumpGas"
   }
 }
