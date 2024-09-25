@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.13;
+pragma solidity 0.8.25;
+
 import "@hyperlane-xyz/mock/MockMailbox.sol";
 import "@hyperlane-xyz/test/TestInterchainGasPaymaster.sol";
 import "@hyperlane-xyz/test/TestIsm.sol";
 
-import {TypeCasts} from "@hyperlane-xyz/libs/TypeCasts.sol";
+import { TypeCasts } from "@hyperlane-xyz/libs/TypeCasts.sol";
 
 contract MockHyperlaneEnvironment {
     uint32 public originDomain;
@@ -25,15 +26,15 @@ contract MockHyperlaneEnvironment {
         mailboxes[_originDomain] = originMailbox;
 
         MockMailbox[] memory destinationsMailbox = new MockMailbox[](_destinationDomains.length);
-        for (uint i = 0; i < _destinationDomains.length; i++) {
-          destinationsMailbox[i] = new MockMailbox(_destinationDomains[i]);
+        for (uint256 i = 0; i < _destinationDomains.length; i++) {
+            destinationsMailbox[i] = new MockMailbox(_destinationDomains[i]);
 
-          originMailbox.addRemoteMailbox(_destinationDomains[i], destinationsMailbox[i]);
-          destinationsMailbox[i].addRemoteMailbox(_originDomain, originMailbox);
-          isms[destinationDomains[i]] = new TestIsm();
-          destinationsMailbox[i].setDefaultIsm(address(isms[destinationDomains[i]]));
-          destinationsMailbox[i].transferOwnership(msg.sender);
-          mailboxes[_destinationDomains[i]] = destinationsMailbox[i];
+            originMailbox.addRemoteMailbox(_destinationDomains[i], destinationsMailbox[i]);
+            destinationsMailbox[i].addRemoteMailbox(_originDomain, originMailbox);
+            isms[destinationDomains[i]] = new TestIsm();
+            destinationsMailbox[i].setDefaultIsm(address(isms[destinationDomains[i]]));
+            destinationsMailbox[i].transferOwnership(msg.sender);
+            mailboxes[_destinationDomains[i]] = destinationsMailbox[i];
         }
     }
 

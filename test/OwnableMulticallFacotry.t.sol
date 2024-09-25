@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.13;
+pragma solidity 0.8.25;
 
 import { Test } from "forge-std/src/Test.sol";
-import {CallLib, OwnableMulticallFactory} from "../src/OwnableMulticallFactory.sol";
-import {TransferrableOwnableMulticall} from "../src/libs/TransferrableOwnableMulticall.sol";
-import {TypeCasts} from "@hyperlane-xyz/libs/TypeCasts.sol";
+import { CallLib, OwnableMulticallFactory } from "../src/OwnableMulticallFactory.sol";
+import { TransferrableOwnableMulticall } from "../src/libs/TransferrableOwnableMulticall.sol";
+import { TypeCasts } from "@hyperlane-xyz/libs/TypeCasts.sol";
 
 contract Callable {
     mapping(address => bytes32) public data;
@@ -21,25 +21,18 @@ contract OwnableMulticallFactoryTest is Test {
 
     address kakaroto = makeAddr("kakaroto");
 
-    event MulticallCreated(
-        address indexed owner,
-        address indexed multicall
-    );
+    event MulticallCreated(address indexed owner, address indexed multicall);
 
     function setUp() public virtual {
         factory = new OwnableMulticallFactory();
         target = new Callable();
     }
-    function getCalls(
-        bytes32 data
-    ) private view returns (CallLib.Call[] memory) {
+
+    function getCalls(bytes32 data) private view returns (CallLib.Call[] memory) {
         vm.assume(data != bytes32(0));
 
-        CallLib.Call memory call = CallLib.Call(
-            TypeCasts.addressToBytes32(address(target)),
-            0,
-            abi.encodeCall(target.set, (data))
-        );
+        CallLib.Call memory call =
+            CallLib.Call(TypeCasts.addressToBytes32(address(target)), 0, abi.encodeCall(target.set, (data)));
         CallLib.Call[] memory calls = new CallLib.Call[](1);
         calls[0] = call;
         return calls;
@@ -58,10 +51,7 @@ contract OwnableMulticallFactoryTest is Test {
         // act
         vm.prank(kakaroto);
         vm.expectEmit(true, true, false, true, address(factory));
-        emit MulticallCreated(
-            kakaroto,
-            expectedMulticall
-        );
+        emit MulticallCreated(kakaroto, expectedMulticall);
         (address payable multicall, bytes[] memory returnData) = factory.deployAndCall(calls);
 
         // assert

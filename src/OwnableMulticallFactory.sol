@@ -1,22 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
-import {MinimalProxy} from "@hyperlane-xyz/libs/MinimalProxy.sol";
-import {CallLib} from "@hyperlane-xyz/middleware/libs/Call.sol";
-import {Create2} from "@openzeppelin/contracts/utils/Create2.sol";
-import {Address} from "@openzeppelin/contracts/utils/Address.sol";
+import { MinimalProxy } from "@hyperlane-xyz/libs/MinimalProxy.sol";
+import { CallLib } from "@hyperlane-xyz/middleware/libs/Call.sol";
+import { Create2 } from "@openzeppelin/contracts/utils/Create2.sol";
+import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
-import {TransferrableOwnableMulticall} from "./libs/TransferrableOwnableMulticall.sol";
-
+import { TransferrableOwnableMulticall } from "./libs/TransferrableOwnableMulticall.sol";
 
 contract OwnableMulticallFactory {
     address public immutable implementation;
     bytes32 public immutable bytecodeHash;
 
-    event MulticallCreated(
-        address indexed owner,
-        address indexed multicall
-    );
+    event MulticallCreated(address indexed owner, address indexed multicall);
 
     constructor() {
         implementation = address(new TransferrableOwnableMulticall(address(this)));
@@ -25,7 +21,11 @@ contract OwnableMulticallFactory {
         bytecodeHash = keccak256(_bytecode);
     }
 
-    function deployAndCall(CallLib.Call[] calldata _calls) external payable returns (address payable _multicall, bytes[] memory returnData) {
+    function deployAndCall(CallLib.Call[] calldata _calls)
+        external
+        payable
+        returns (address payable _multicall, bytes[] memory returnData)
+    {
         bool _deployed = false;
         bytes32 _salt = _getSalt(msg.sender);
 
@@ -52,23 +52,18 @@ contract OwnableMulticallFactory {
         }
     }
 
-    function getMulticallAddress(
-        address _owner
-    ) public view returns (address) {
-        return
-            _getMulticallAddress(_getSalt(_owner));
+    function getMulticallAddress(address _owner) public view returns (address) {
+        return _getMulticallAddress(_getSalt(_owner));
     }
 
-    function _getSalt(address _owner) private view returns  (bytes32) {
+    function _getSalt(address _owner) private view returns (bytes32) {
         return keccak256(abi.encodePacked(address(this), _owner));
     }
 
-    function _getMulticallAddress(
-        bytes32 _salt
-    ) private view returns (address payable) {
+    function _getMulticallAddress(bytes32 _salt) private view returns (address payable) {
         return payable(Create2.computeAddress(_salt, bytecodeHash));
     }
 
     // solhint-disable-next-line no-empty-blocks
-    receive() external payable {}
+    receive() external payable { }
 }

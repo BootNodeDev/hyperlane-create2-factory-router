@@ -11,7 +11,6 @@ import { ICreateX } from "./utils/ICreateX.sol";
 import { InterchainAccountRouter } from "@hyperlane-xyz/middleware/InterchainAccountRouter.sol";
 import { InterchainAccountIsm } from "@hyperlane-xyz/isms/routing/InterchainAccountIsm.sol";
 
-
 /// @dev See the Solidity Scripting tutorial: https://book.getfoundry.sh/tutorials/solidity-scripting
 contract DeployICARouter is Script {
     function run() public {
@@ -36,7 +35,8 @@ contract DeployICARouter is Script {
         }
 
         if (routerImpl == address(0)) {
-            bytes32 rImplSalt = keccak256(abi.encodePacked("ICA-R-IMPLEMENTATION-SALT-0.0.1", vm.addr(deployerPrivateKey)));
+            bytes32 rImplSalt =
+                keccak256(abi.encodePacked("ICA-R-IMPLEMENTATION-SALT-0.0.1", vm.addr(deployerPrivateKey)));
             bytes memory rImplCreation = type(InterchainAccountRouter).creationCode;
             bytes memory rImplBytecode = abi.encodePacked(rImplCreation, abi.encode(mailbox));
 

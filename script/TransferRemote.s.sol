@@ -5,8 +5,8 @@ import { Script } from "forge-std/src/Script.sol";
 import { console2 } from "forge-std/src/console2.sol";
 
 import { ReceiverHypERC20 } from "./utils/ReceiverHypERC20.sol";
-import {TypeCasts} from "@hyperlane-xyz/libs/TypeCasts.sol";
-import {StandardHookMetadata} from "@hyperlane-xyz/hooks/libs/StandardHookMetadata.sol";
+import { TypeCasts } from "@hyperlane-xyz/libs/TypeCasts.sol";
+import { StandardHookMetadata } from "@hyperlane-xyz/hooks/libs/StandardHookMetadata.sol";
 
 /// @dev See the Solidity Scripting tutorial: https://book.getfoundry.sh/tutorials/solidity-scripting
 contract TransferRemote is Script {
@@ -18,11 +18,23 @@ contract TransferRemote is Script {
 
         vm.startBroadcast(ownerPrivateKey);
 
-        uint256 _gasPaymentOp = warpRouter.quoteGasPayment(uint32(11155420));
-        uint256 _gasPaymentArb = warpRouter.quoteGasPayment(uint32(421614));
+        uint256 _gasPaymentOp = warpRouter.quoteGasPayment(uint32(11_155_420));
+        uint256 _gasPaymentArb = warpRouter.quoteGasPayment(uint32(421_614));
 
-        bytes32 messageIdOp = warpRouter.transferRemote{ value: _gasPaymentOp }(uint32(11155420), TypeCasts.addressToBytes32(owner), 1000, StandardHookMetadata.overrideGasLimit(308139), address(0));
-        bytes32 messageIdArb = warpRouter.transferRemote{ value: _gasPaymentArb }(uint32(421614), TypeCasts.addressToBytes32(owner), 1000, StandardHookMetadata.overrideGasLimit(308139), address(0));
+        bytes32 messageIdOp = warpRouter.transferRemote{ value: _gasPaymentOp }(
+            uint32(11_155_420),
+            TypeCasts.addressToBytes32(owner),
+            1000,
+            StandardHookMetadata.overrideGasLimit(308_139),
+            address(0)
+        );
+        bytes32 messageIdArb = warpRouter.transferRemote{ value: _gasPaymentArb }(
+            uint32(421_614),
+            TypeCasts.addressToBytes32(owner),
+            1000,
+            StandardHookMetadata.overrideGasLimit(308_139),
+            address(0)
+        );
 
         vm.stopBroadcast();
 
