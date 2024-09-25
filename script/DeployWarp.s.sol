@@ -7,6 +7,7 @@ import { console2 } from "forge-std/src/console2.sol";
 import { TransparentUpgradeableProxy } from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import { ICreateX } from "./utils/ICreateX.sol";
 import { ReceiverHypERC20 } from "./utils/ReceiverHypERC20.sol";
+import { OwnableMulticallFactory} from "../src/OwnableMulticallFactory.sol";
 
 import { InterchainAccountRouter } from "@hyperlane-xyz/middleware/InterchainAccountRouter.sol";
 import {InterchainAccountMessage} from "@hyperlane-xyz/middleware/libs/InterchainAccountMessage.sol";
@@ -15,7 +16,16 @@ import {TypeCasts} from "@hyperlane-xyz/libs/TypeCasts.sol";
 import {Router} from "@hyperlane-xyz/client/Router.sol";
 import {IMailbox} from "@hyperlane-xyz/interfaces/IMailbox.sol";
 import {StandardHookMetadata} from "@hyperlane-xyz/hooks/libs/StandardHookMetadata.sol";
+import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 
+
+interface CallRemoteInterface {
+    function callRemote(
+        uint32 _destination,
+        CallLib.Call[] calldata _calls,
+        bytes calldata _hookMetadata
+    ) external payable returns (bytes32);
+}
 
 /// @dev See the Solidity Scripting tutorial: https://book.getfoundry.sh/tutorials/solidity-scripting
 contract DeployWarp is Script {
@@ -53,19 +63,24 @@ contract DeployWarp is Script {
         address admin = vm.envAddress("PROXY_ADMIN");
         address owner = vm.envAddress("ROUTER_OWNER");
         address mailbox = vm.envAddress("MAILBOX");
+        address multicallFactory = vm.envAddress("MMULTICALL_FACTORY");
 
+        OwnableMulticallFactory multicallFactoryContract = OwnableMulticallFactory(payable(multicallFactory));
         InterchainAccountRouter localRouter = InterchainAccountRouter(0xa95B9cE4B887Aa659e266a5BA9F7E1792bB5080C);
         ICreateX createXContract = ICreateX(createX);
         address deployerAddress = vm.addr(deployerPrivateKey);
 
-        console2.log("deployerAddress", deployerAddress);
+        address deployerMulticall = multicallFactoryContract.getMulticallAddress(deployerAddress);
 
-        address icaAddressOp = localRouter.getRemoteInterchainAccount(uint32(11155420), deployerAddress);
-        address icaAddressArb = localRouter.getRemoteInterchainAccount(uint32(421614), deployerAddress);
-        // address icaAddressSep = localRouter.getRemoteInterchainAccount(uint32(11155111), deployerAddress);
+        address icaAddressOp = localRouter.getRemoteInterchainAccount(uint32(11155420), deployerMulticall);
+        address icaAddressArb = localRouter.getRemoteInterchainAccount(uint32(421614), deployerMulticall);
+        // address icaAddressSep = localRouter.getRemoteInterchainAccount(uint32(84532), deployerAddress);
 
         bytes32 routerSalt = encodeSalt(icaAddressOp, "WARPROUTE-3");
         bytes32 guardedSalt = _efficientHash({a: bytes32(uint256(uint160(icaAddressOp))), b: routerSalt});
+
+        bytes32 localRouterSalt = encodeSalt(deployerMulticall, "WARPROUTE-3");
+        bytes32 localGuardedSalt = _efficientHash({a: bytes32(uint256(uint160(deployerMulticall))), b: localRouterSalt});
 
         console2.log("routerSalt");
         console2.logBytes32(routerSalt);
@@ -74,54 +89,90 @@ contract DeployWarp is Script {
 
         address warpRouteOp = createXContract.computeCreate3Address(guardedSalt);
         address warpRouteArb = createXContract.computeCreate3Address(guardedSalt);
-        // address warpRouteSep = createXContract.computeCreate3Address(guardedSalt, deployerAddress);
+        address warpRouteSep = createXContract.computeCreate3Address(localGuardedSalt);
 
-        console2.logBytes(
-            abi.encodeWithSelector(
-                    ReceiverHypERC20.initialize.selector,
-                    0, // initialSupply
-                    "TestWarp", // name
-                    "TW", // symbol
-                    address(0), // hook
-                    address(0xb7484d3CA5Cb573a148DA31d408fd0EfBAAC8aAC), // InterchainAccountISM
-                    icaAddressOp, // owner - ica should have the same address on every chain if remote routers has the same addresses also
-                    owner// receiver
-                )
-        );
-
-
-        vm.startBroadcast(deployerPrivateKey);
-
-        address warpRouteSep = address(new TransparentUpgradeableProxy(
-            address(0xF2385f323653E663F0C27d118beE8e2162Ca6372),
-            admin,
-            abi.encodeWithSelector(
-                ReceiverHypERC20.initialize.selector,
-                1000000000000000000000000000, // initialSupply
-                "TestWarp", // name
-                "TW", // symbol
-                address(0), // hook
-                address(0xb7484d3CA5Cb573a148DA31d408fd0EfBAAC8aAC), // InterchainAccountISM
-                owner, // owner
-                owner // receiver
-            )
-        ));
+        // console2.logBytes(
+        //     abi.encodeWithSelector(
+        //             ReceiverHypERC20.initialize.selector,
+        //             0, // initialSupply
+        //             "TestWarp", // name
+        //             "TW", // symbol
+        //             address(0), // hook
+        //             address(0xb7484d3CA5Cb573a148DA31d408fd0EfBAAC8aAC), // InterchainAccountISM
+        //             icaAddressOp, // owner - ica should have the same address on every chain if remote routers has the same addresses also
+        //             owner// receiver
+        //         )
+        // );
 
         uint32[] memory domains = new uint32[](3);
         domains[0] = uint32(11155420);
         domains[1] = uint32(421614);
-        domains[2] = uint32(11155111);
+        domains[2] = uint32(84532);
 
         bytes32[] memory addresses = new bytes32[](3);
         addresses[0] = TypeCasts.addressToBytes32(warpRouteOp);
         addresses[1] = TypeCasts.addressToBytes32(warpRouteArb);
         addresses[2] = TypeCasts.addressToBytes32(warpRouteSep);
 
-        console2.log("owner", Router(warpRouteSep).owner());
+        vm.startBroadcast(deployerPrivateKey);
 
-        Router(warpRouteSep).enrollRemoteRouters(domains, addresses);
+        // address warpRouteSep = address(new TransparentUpgradeableProxy(
+        //     address(0xF2385f323653E663F0C27d118beE8e2162Ca6372),
+        //     admin,
+        //     abi.encodeWithSelector(
+        //         ReceiverHypERC20.initialize.selector,
+        //         1000000000000000000000000000, // initialSupply
+        //         "TestWarp", // name
+        //         "TW", // symbol
+        //         address(0), // hook
+        //         address(0xb7484d3CA5Cb573a148DA31d408fd0EfBAAC8aAC), // InterchainAccountISM
+        //         owner, // owner
+        //         owner // receiver
+        //     )
+        // ));
 
         bytes memory routerCreationCode = type(TransparentUpgradeableProxy).creationCode;
+
+        // TODO deploy local router and enroll remote routers
+        bytes memory localRouterBytecode = abi.encodePacked(
+            routerCreationCode,
+            abi.encode(
+                address(0xF2385f323653E663F0C27d118beE8e2162Ca6372), // implementation
+                admin,
+                abi.encodeWithSelector(
+                    ReceiverHypERC20.initialize.selector,
+                    1000000000000000000000000000, // initialSupply
+                    "TestWarp", // name
+                    "TW", // symbol
+                    address(0), // hook
+                    address(0xb7484d3CA5Cb573a148DA31d408fd0EfBAAC8aAC), // InterchainAccountISM
+                    deployerMulticall, // owner
+                    owner // receiver
+                )
+            )
+        );
+
+        bytes memory localCreateXPayload = abi.encodeWithSignature("deployCreate3(bytes32,bytes)", localRouterSalt, localRouterBytecode);
+
+        // this calls are sent to the OwnerMulticallFactory so they must include the calls to the localRouter
+        CallLib.Call[] memory localCalls = new CallLib.Call[](4); // TODO - more calls
+        localCalls[0] = CallLib.Call(
+            TypeCasts.addressToBytes32(createX),
+            0,
+            localCreateXPayload
+        );
+
+        localCalls[1] = CallLib.Call(
+            TypeCasts.addressToBytes32(warpRouteSep),
+            0,
+            abi.encodeWithSelector(
+                Router.enrollRemoteRouters.selector,
+                domains,
+                addresses
+            )
+        );
+
+        // TODO deploy remote routers and enroll calling the ICA router
 
         bytes memory routerBytecode = abi.encodePacked(
             routerCreationCode,
@@ -143,15 +194,15 @@ contract DeployWarp is Script {
 
         bytes memory createXPayload = abi.encodeWithSignature("deployCreate3(bytes32,bytes)", routerSalt, routerBytecode);
 
-        CallLib.Call[] memory calls = new CallLib.Call[](2);
-        calls[0] = CallLib.Call(
+        CallLib.Call[] memory callsOp = new CallLib.Call[](2);
+        callsOp[0] = CallLib.Call(
             TypeCasts.addressToBytes32(createX),
             0,
             createXPayload
         );
 
         // we can use warpRouteOp because it is supposed to be the same as warpRouteArb
-        calls[1] = CallLib.Call(
+        callsOp[1] = CallLib.Call(
             TypeCasts.addressToBytes32(warpRouteOp),
             0,
             abi.encodeWithSelector(
@@ -161,14 +212,38 @@ contract DeployWarp is Script {
             )
         );
 
-        bytes memory message = abi.encode(
+        bytes memory messageOp = abi.encode(
             TypeCasts.addressToBytes32(deployerAddress),
             TypeCasts.addressToBytes32(address(0xb7484d3CA5Cb573a148DA31d408fd0EfBAAC8aAC)),
-            calls
+            callsOp
         );
 
-        uint256 _gasPaymentOp = localRouter.quoteGasPayment(11155420, message, 2456224);
-        uint256 _gasPaymentArb = localRouter.quoteGasPayment(421614, message, 2456224);
+        CallLib.Call[] memory callsArb = new CallLib.Call[](2);
+        callsArb[0] = CallLib.Call(
+            TypeCasts.addressToBytes32(createX),
+            0,
+            createXPayload
+        );
+
+        // we can use warpRouteOp because it is supposed to be the same as warpRouteArb
+        callsArb[1] = CallLib.Call(
+            TypeCasts.addressToBytes32(warpRouteArb),
+            0,
+            abi.encodeWithSelector(
+                Router.enrollRemoteRouters.selector,
+                domains,
+                addresses
+            )
+        );
+
+        bytes memory messageArb = abi.encode(
+            TypeCasts.addressToBytes32(deployerAddress),
+            TypeCasts.addressToBytes32(address(0xb7484d3CA5Cb573a148DA31d408fd0EfBAAC8aAC)),
+            callsArb
+        );
+
+        uint256 _gasPaymentOp = localRouter.quoteGasPayment(11155420, messageOp, 2456224);
+        uint256 _gasPaymentArb = localRouter.quoteGasPayment(421614, messageArb, 2456224);
 
         console2.log("icaAddressOp", icaAddressOp);
         console2.log("icaAddressArb", icaAddressArb);
@@ -178,19 +253,55 @@ contract DeployWarp is Script {
         console2.log("_gasPaymentOp", _gasPaymentOp);
         console2.log("_gasPaymentArb", _gasPaymentArb);
 
-        bytes32 messageIdOp = localRouter.callRemote{ value: _gasPaymentOp }(
-            11155420, calls, StandardHookMetadata.overrideGasLimit(2456224)
+        // bytes32 messageIdOp = localRouter.callRemote{ value: _gasPaymentOp }(
+        //     11155420, calls, StandardHookMetadata.overrideGasLimit(2456224)
+        // );
+
+        // bytes32 messageIdArb = localRouter.callRemote{ value: _gasPaymentArb }(
+        //     421614, calls, StandardHookMetadata.overrideGasLimit(2456224)
+        // );
+
+        localCalls[2] = CallLib.Call(
+            TypeCasts.addressToBytes32(address(localRouter)),
+            _gasPaymentOp,
+            abi.encodeWithSelector(
+                CallRemoteInterface.callRemote.selector,
+                11155420,
+                callsOp,
+                StandardHookMetadata.overrideGasLimit(2456224)
+            )
         );
 
-        bytes32 messageIdArb = localRouter.callRemote{ value: _gasPaymentArb }(
-            421614, calls, StandardHookMetadata.overrideGasLimit(2456224)
+        localCalls[3] = CallLib.Call(
+            TypeCasts.addressToBytes32(address(localRouter)),
+            _gasPaymentArb,
+            abi.encodeWithSelector(
+                CallRemoteInterface.callRemote.selector,
+                421614,
+                callsArb,
+                StandardHookMetadata.overrideGasLimit(2456224)
+            )
         );
+
+        // Address.sendValue(payable(deployerMulticall),  _gasPaymentOp + _gasPaymentArb);
+
+        (address multicall, bytes[] memory returnData) = multicallFactoryContract.deployAndCall{value: _gasPaymentOp + _gasPaymentArb}(localCalls);
+
+        // console2.logBytes(abi.encodeWithSelector(
+        //     OwnableMulticallFactory.deployAndCall.selector,
+        //     localCalls
+        // ));
 
         vm.stopBroadcast();
 
+        console2.log("multicall", multicall);
         console2.log("messageIdOp");
-        console2.logBytes32(messageIdOp);
-        console2.log("_gasPaymentArb");
-        console2.logBytes32(messageIdArb);
+        for (uint256 i = 0; i < returnData.length; i++) {
+            console2.logBytes(returnData[i]);
+        }
+
+        // console2.logBytes32(messageIdOp);
+        // console2.log("_gasPaymentArb");
+        // console2.logBytes32(messageIdArb);
     }
 }

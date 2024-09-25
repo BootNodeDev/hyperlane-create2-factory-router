@@ -48,11 +48,13 @@
     "run:enrollRouters": "dotenv-run-script enrollRouters",
     "interchainDeploy": "forge script script/InterchainDeployExample.s.sol:InterchainDeployExample -f $NETWORK --broadcast --slow -vvvv",
     "run:interchainDeploy": "dotenv-run-script interchainDeploy",
-    "deployWarp": "forge script script/DeployWarp.s.sol:DeployWarp -f $NETWORK --slow -vvv --via-ir",
+    "deployWarp": "forge script script/DeployWarp.s.sol:DeployWarp -f $NETWORK --broadcast --verify --slow -vvv --via-ir",
     "run:deployWarp": "dotenv-run-script deployWarp",
     "transferRemote": "forge script script/TransferRemote.s.sol:TransferRemote -f $NETWORK --broadcast --slow -vvv --via-ir",
     "run:transferRemote": "dotenv-run-script transferRemote",
     "bumpGas": "forge script script/BumpGas.s.sol:BumpGas -f $NETWORK --broadcast --slow -vvv --via-ir",
-    "run:bumpGas": "dotenv-run-script bumpGas"
+    "run:bumpGas": "dotenv-run-script bumpGas",
+    "deployMulticallFactory": "forge script script/DeployMulticallFactory.s.sol:DeployMulticallFactory -f $NETWORK --broadcast --verify --slow -vvv --via-ir",
+    "run:deployMulticallFactory": "dotenv-run-script deployMulticallFactory"
   }
 }
